@@ -1,0 +1,31 @@
+name: Telegram test
+
+# Ручной запуск (после мёржа в main) и автозапуск при изменении самого
+# workflow-файла — чтобы проверить доставку прямо сейчас, до мёржа.
+on:
+  workflow_dispatch:
+    inputs:
+      text:
+        description: "Текст сообщения"
+        required: false
+        default: "✅ Тест из GitHub Actions — send.py работает"
+  push:
+    branches:
+      - claude/skills-scaffold-init-rq45gm
+    paths:
+      - .github/workflows/telegram-test.yml
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Send Telegram message
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 send.py "${{ github.event.inputs.text || '✅ Тест из GitHub Actions — send.py работает' }}"
