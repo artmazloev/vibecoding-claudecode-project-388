@@ -245,12 +245,19 @@ def compute_significant(prev_rows, curr_rows):
         if p is None:
             changes.append({"url": c["url"], "kind": "added", "row": c})
             continue
+        if c.get("regular_price") is None:
+            # снятие цены не удалось — не доверяем строке, пропускаем,
+            # чтобы не слать ложные «скидка снята» / «рассрочка пропала».
+            continue
         items = []
-        # regular_price — порог
-        if p.get("regular_price") != c.get("regular_price"):
-            rel = _pct(p.get("regular_price"), c.get("regular_price"))
+        # regular_price — порог. Сравниваем только когда обе цены известны:
+        # если текущую цену снять не удалось (None), это сбой снятия, а не
+        # изменение цены — не шумим и не падаем.
+        pr, cr = p.get("regular_price"), c.get("regular_price")
+        if pr is not None and cr is not None and pr != cr:
+            rel = _pct(pr, cr)
             if rel is None or abs(rel) >= PRICE_THRESHOLD:
-                items.append(("price", p.get("regular_price"), c.get("regular_price"), rel))
+                items.append(("price", pr, cr, rel))
         # sale_price
         ps, cs = p.get("sale_price"), c.get("sale_price")
         if ps is None and cs is not None:
@@ -337,6 +344,14 @@ def main():
     curr_rows = run_batch()
     print("Прогон %s: снято %d товаров" % (today, len(curr_rows)))
     print(json.dumps(curr_rows, ensure_ascii=False, indent=2))
+
+    # Если не удалось снять ни одной цены (например, сайты блокируют раннер) —
+    # не портим историю нулевым прогоном: предупреждаем и выходим без сохранения.
+    if all(r.get("regular_price") is None for r in curr_rows):
+        print("Ни одной цены не снято — прогон не сохраняем.")
+        telegram_send("⚠️ Прогон трекера не удался: цены не сняты "
+                      "(сайты недоступны с раннера).")
+        return 0
 
     prev_rows, prev_date = load_previous_run(token, today)
     first_run = prev_rows is None
