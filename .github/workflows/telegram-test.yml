@@ -28,4 +28,4 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          python3 .claude/skills/tracker/send.py "${{ github.event.inputs.text || '✅ Тест из GitHub Actions — send.py работает' }}"
+          python3 send.py "${{ github.event.inputs.text || '✅ Тест из GitHub Actions — send.py работает' }}"
